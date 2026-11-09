@@ -193,6 +193,7 @@ export const Dropdown = forwardRef(function Dropdown<Item>(
     defaultSelected,
     selected,
     onSelectionChange,
+    disabled,
     valueToString,
   });
 

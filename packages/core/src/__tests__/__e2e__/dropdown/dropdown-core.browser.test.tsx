@@ -4,6 +4,7 @@ import { type KeyboardEventHandler, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { trackNativeEvents } from "~browser-test-utils/interactions";
+import { mouse } from "~browser-test-utils/pointer";
 import { renderWithSalt } from "~browser-test-utils/render";
 import * as dropdownStories from "~stories/dropdown/dropdown.stories";
 import { CustomFloatingComponentProvider, FLOATING_TEST_ID } from "../common";
@@ -253,6 +254,38 @@ describe("Given a core Dropdown", () => {
     await combobox().click({ force: true });
     await expect.element(combobox()).not.toHaveFocus();
     await expect.element(listbox()).not.toBeInTheDocument();
+  });
+
+  it("ignores option selection when a controlled open Dropdown becomes disabled", async () => {
+    const onOpenChange = vi.fn();
+    const onSelectionChange = vi.fn();
+    const props = {
+      defaultSelected: ["Alabama"],
+      onOpenChange,
+      onSelectionChange,
+    };
+    const { rerender } = await renderWithSalt(
+      <Default {...props} open={false} />,
+    );
+    await combobox().click();
+    expect(onOpenChange.mock.lastCall?.[0]).toBe(true);
+    await rerender(<Default {...props} open />);
+
+    await rerender(<Default {...props} open disabled />);
+    await expect.element(combobox()).toBeDisabled();
+    const option = page.getByRole("option", { name: "Alaska" });
+    await expect.element(option).toBeVisible();
+    const { left, top, width, height } = option
+      .element()
+      .getBoundingClientRect();
+    await mouse.click({ x: left + width / 2, y: top + height / 2 });
+
+    expect(onSelectionChange).not.toHaveBeenCalled();
+    await expect.element(combobox()).toHaveTextContent("Alabama");
+
+    await rerender(<Default {...props} open />);
+    await option.click();
+    expect(onSelectionChange.mock.lastCall?.[1]).toEqual(["Alaska"]);
   });
 
   it("drops focus when selection disables the control", async () => {
